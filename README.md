@@ -14,3 +14,29 @@ Why is feudal reinforcement leraning a good approach
 3. allows the designation of specific subgoal rewards that align with the precise nature of cnc machining.
 
 ## Implementation details
+
+The implementation begins with developing a simulated 3D environment that represents both the stock and the target shape as voxel grids. The router is simulated as an agent that can remove material along its path, where each move is not confined to a simple linear displacement but can span multiple voxels and follow complex, non-linear trajectories. To achieve precise carving, the project employs a feudal reinforcement learning framework with a hierarchical structure. The high-level manager sets spatial subgoals—such as designating which region of the stock to clear—while the low-level worker learns to execute the fine, accurate movements required to meet these subgoals. This separation allows the system to abstract the temporal complexity of long-horizon planning from the intricacies of short, precise actions, and enables the design of specialized subgoal rewards that align with the precise demands of CNC machining. Overall, the system iteratively trains the agent in this environment, refining both levels of control until the router can optimally remove the unnecessary stock and leave behind only the intended shape.
+
+higher level manager, low level worker --> operate on diff scales and receive different reward signals.
+
+### manager network
+
+input --> downsampled version of the full voxel grid.
+output --> subgoal vector representing spatial target or desired change in state. Will output relative position that the worker should try to clear!
+time scale --> manager operates at a slower rate (every T steps, where T is a fixed number of steps, or potentially dynamic!) so that it sets higher level goals that span many levels
+
+### worker network
+
+input --> local observations (or full state if possible!) concatenated with the subgoal provided by the manager. This helps the worker focus on acheving the current subgoal set by the manager  
+output --> low-level actions which could be discrete (small directional moves) or continuous that move router a small distance at each step  
+reward --> workers reward is structured around how well it achieves the given subgoal (i.e the dist to the subgoal or progress made toward clearing the region)  
+
+### reward decomposition and training signals
+
+manager reward --> manager receives a global reward based on overall progress towards the final carving objective (such as portion of unecessary stock removed while leaving target shape intact), potentially bonus if higher level goal is met (worker clears specified region entirely)  
+worker reward --> worker is given an intrinsic reward for making progress towards the subgoal. maybe this is measuring distance between routers current position and the subgoal, and we need some penalty for each step to encourage efficiency to meet the task.
+
+### temporal abstraction and communication
+
+The two networks communicate via the subgoal: The manager produces a subgoal every T steps (or continuously updated every step but only enforced every T steps), and the worker’s performance is evaluated with respect to that subgoal.  
+FeUdal Networks (FuN) approach, where the manager uses a directional “goal embedding” that the worker learns to follow.
